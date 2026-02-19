@@ -54,6 +54,18 @@ def _looks_like_budget_or_short_reply(text: str) -> bool:
     return False
 
 
+def _looks_like_option_choice(text: str) -> bool:
+    """'opcion 5', 'opción 3', 'la 2' = eligiendo de una lista → no off-topic."""
+    t = text.strip().lower()
+    if not t or len(t) > 25:
+        return False
+    if "opcion" in t or "opción" in t or "opciòn" in t or "opciin" in t:
+        return True
+    if (t.startswith("la ") or t.startswith("el ")) and len(t) <= 8 and any(c.isdigit() for c in t):
+        return True
+    return False
+
+
 async def chat(
     user_message: str,
     thread_id: str,
@@ -65,8 +77,8 @@ async def chat(
         yield "Por favor escribe tu pregunta o lo que buscas en un auto."
         return
 
-    # No marcar como off-topic respuestas cortas de presupuesto ("15 millones", "20 m", etc.)
-    skip_off_topic = _looks_like_budget_or_short_reply(user_message)
+    # No marcar como off-topic: presupuesto ("15 millones"), o elegir opción ("opcion 5", "la 2")
+    skip_off_topic = _looks_like_budget_or_short_reply(user_message) or _looks_like_option_choice(user_message)
     if check_off_topic and not skip_off_topic and not is_automotive_related(user_message):
         yield "Soy un asesor de ventas de automóviles. Solo puedo ayudarte con temas de autos: búsqueda, precios, marcas, modelos, etc. ¿En qué puedo ayudarte con tu próximo auto?"
         return

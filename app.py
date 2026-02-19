@@ -10,7 +10,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse, StreamingResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 
 from config import STOCK_FILE, STOCK_DB_PATH
 from stock.repository import StockRepository
@@ -90,19 +90,27 @@ async def api_chat(request: Request):
         )
 
     user_message = (body.get("message") or "").strip()
+    thread_id = body.get("thread_id") or request.headers.get("X-Thread-Id") or str(uuid4())
     if not user_message:
-        return {"reply": "Escribe un mensaje.", "thread_id": body.get("thread_id") or ""}
-
-    thread_id = body.get("thread_id") or str(uuid4())
+        return JSONResponse(
+            {"reply": "Escribe un mensaje.", "thread_id": thread_id},
+            headers={"X-Thread-Id": thread_id},
+        )
 
     try:
         reply_parts = []
         async for chunk in chat(user_message, thread_id):
             reply_parts.append(chunk)
         reply = "".join(reply_parts)
-        return {"reply": reply, "thread_id": thread_id}
+        return JSONResponse(
+            {"reply": reply, "thread_id": thread_id},
+            headers={"X-Thread-Id": thread_id},
+        )
     except Exception as e:
-        return {"reply": f"Disculpa, hubo un error. Intenta de nuevo.", "thread_id": thread_id}
+        return JSONResponse(
+            {"reply": "Disculpa, hubo un error. Intenta de nuevo.", "thread_id": thread_id},
+            headers={"X-Thread-Id": thread_id},
+        )
 
 
 # Para verificación de webhook de WhatsApp (Meta)

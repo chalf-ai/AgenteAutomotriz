@@ -41,6 +41,21 @@ uvicorn app:app --reload --port 8000
 ## Endpoints
 
 - `GET /health` — estado del servicio
-- `POST /chat` — body `{"message": "...", "thread_id": "opcional"}` → respuesta del agente
+- `POST /chat` — body `{"message": "...", "thread_id": "opcional"}` → respuesta del agente (streaming)
+- `POST /api/chat` — para interfaz de chat (Lovable, etc.): ver abajo
 - `GET /webhook` — verificación del webhook de WhatsApp (Meta)
 - `POST /webhook` — recepción de mensajes de WhatsApp (a conectar con el agente)
+
+### Mantener contexto en el chat (POST /api/chat)
+
+El agente tiene **memoria por conversación**. Si la interfaz no envía el mismo `thread_id` en cada mensaje, el agente **pierde el contexto** (por ejemplo, no recuerda las opciones que acaba de listar).
+
+**Qué hacer en el frontend (Lovable u otro):**
+
+1. En el **primer mensaje** de una conversación, envía solo `{"message": "..."}`. La API devolverá `{"reply": "...", "thread_id": "abc-123..."}`.
+2. **Guarda** ese `thread_id` (en estado de React, en un ref, en sessionStorage, etc.).
+3. En **todos los mensajes siguientes** de esa misma conversación, envía:  
+   `{"message": "tu mensaje", "thread_id": "abc-123..."}` (el mismo valor).
+4. Opcional: también puedes enviar el id en la cabecera `X-Thread-Id` o leerlo de la cabecera `X-Thread-Id` de la respuesta.
+
+Si no reenvías el `thread_id`, cada request se trata como una conversación nueva y el agente no verá el historial (por eso responde como si fuera la primera vez).
