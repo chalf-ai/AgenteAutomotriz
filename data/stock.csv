@@ -1,0 +1,11 @@
+id,marca,modelo,año,precio,kilometraje,transmision,combustible,color,estado
+1,Toyota,Corolla,2022,18500,25000,Automática,Gasolina,Blanco,Excelente
+2,Honda,Civic,2021,17200,32000,Automática,Gasolina,Gris,Excelente
+3,Ford,Mustang,2020,28500,15000,Automática,Gasolina,Negro,Muy bueno
+4,Chevrolet,Onix,2023,14500,12000,Manual,Gasolina,Blanco,Nuevo
+5,Volkswagen,Golf,2019,16500,45000,Automática,Gasolina,Azul,Bueno
+6,Mazda,Mazda3,2022,19500,22000,Automática,Gasolina,Rojo,Excelente
+7,Nissan,Sentra,2021,16800,38000,CVT,Gasolina,Blanco,Bueno
+8,Hyundai,Tucson,2022,26500,18000,Automática,Gasolina,Gris,Excelente
+9,Kia,Sportage,2021,24200,29000,Automática,Gasolina,Negro,Muy bueno
+10,Subaru,Outback,2020,27800,35000,Automática,Gasolina,Verde,Bueno
