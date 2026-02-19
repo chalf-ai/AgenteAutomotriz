@@ -9,6 +9,7 @@ from typing import AsyncGenerator
 from uuid import uuid4
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse, StreamingResponse
 
 from config import STOCK_FILE, STOCK_DB_PATH
@@ -30,6 +31,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Agente Pompeyo Carrasco Usados", lifespan=lifespan)
+
+# CORS: permite que Lovable u otra interfaz llame a la API desde el navegador
+# allow_credentials=False cuando origins es "*" (requerido por el navegador)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
 
 
 @app.get("/health")
@@ -55,6 +67,40 @@ async def chat_endpoint(request: Request):
         media_type="text/plain; charset=utf-8",
         headers={"X-Thread-Id": thread_id},
     )
+
+
+@app.post("/api/chat")
+async def api_chat(request: Request):
+    """
+    API para tu interfaz de chat (emulando WhatsApp).
+    POST body: {"message": "...", "thread_id": "opcional"}
+    Respuesta JSON: {"reply": "...", "thread_id": "..."}
+    """
+    from agent.orchestrator import chat
+
+    try:
+        body = await request.json()
+    except Exception:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            {"reply": "Error: envía un JSON con 'message'.", "thread_id": ""},
+            status_code=422,
+        )
+
+    user_message = (body.get("message") or "").strip()
+    if not user_message:
+        return {"reply": "Escribe un mensaje.", "thread_id": body.get("thread_id") or ""}
+
+    thread_id = body.get("thread_id") or str(uuid4())
+
+    try:
+        reply_parts = []
+        async for chunk in chat(user_message, thread_id):
+            reply_parts.append(chunk)
+        reply = "".join(reply_parts)
+        return {"reply": reply, "thread_id": thread_id}
+    except Exception as e:
+        return {"reply": f"Disculpa, hubo un error. Intenta de nuevo.", "thread_id": thread_id}
 
 
 # Para verificación de webhook de WhatsApp (Meta)
