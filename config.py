@@ -25,5 +25,6 @@ STOCK_FILE = os.getenv("STOCK_FILE") or str(DATA_DIR / "stock copy.csv")
 STOCK_DB_PATH = os.getenv("STOCK_DB_PATH") or str(DATA_DIR / "stock.db")
 FAQ_CACHE_PATH = os.getenv("FAQ_CACHE_PATH") or str(DATA_DIR / "faq_cache.db")
 LEADS_DB_PATH = os.getenv("LEADS_DB_PATH") or str(DATA_DIR / "leads.db")
+CHECKPOINT_DB_PATH = os.getenv("CHECKPOINT_DB_PATH") or str(DATA_DIR / "checkpoints.db")
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)

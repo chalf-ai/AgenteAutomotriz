@@ -75,6 +75,8 @@ async def api_chat(request: Request):
     API para tu interfaz de chat (emulando WhatsApp).
     POST body: {"message": "...", "thread_id": "opcional"}
     Respuesta JSON: {"reply": "...", "thread_id": "..."}
+    Importante: envía siempre el mismo thread_id que recibes en cada respuesta
+    para mantener el contexto de la conversación (memoria).
     """
     from agent.orchestrator import chat
 

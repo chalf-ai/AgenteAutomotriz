@@ -1,10 +1,28 @@
 """Construcción del agente LangGraph con herramientas y memoria."""
-from langgraph.checkpoint.memory import MemorySaver
+from __future__ import annotations
+
+import sqlite3
+
 from langgraph.prebuilt import create_react_agent
 from langchain_openai import ChatOpenAI
 
-from config import OPENAI_API_KEY, OPENAI_MODEL
+from config import OPENAI_API_KEY, OPENAI_MODEL, CHECKPOINT_DB_PATH
 from agent.tools import search_stock, get_stock_summary, register_lead
+
+# Memoria persistente en SQLite (mismo thread_id = misma conversación aunque reinicie el servidor)
+_checkpoint_conn: sqlite3.Connection | None = None
+
+
+def _get_checkpointer():
+    global _checkpoint_conn
+    if _checkpoint_conn is None:
+        _checkpoint_conn = sqlite3.connect(CHECKPOINT_DB_PATH, check_same_thread=False)
+    try:
+        from langgraph.checkpoint.sqlite import SqliteSaver
+        return SqliteSaver(_checkpoint_conn)
+    except ImportError:
+        from langgraph.checkpoint.memory import MemorySaver
+        return MemorySaver()
 
 SYSTEM_PROMPT = """Eres Jaime, ejecutivo de ventas de Pompeyo Carrasco Usados. Eres amable, profesional y orientado a ayudar al cliente a encontrar su vehículo usado ideal.
 
@@ -39,7 +57,7 @@ def build_agent():
         temperature=0.3,
     )
     tools = [search_stock, get_stock_summary, register_lead]
-    memory = MemorySaver()
+    memory = _get_checkpointer()
     agent = create_react_agent(
         llm,
         tools=tools,

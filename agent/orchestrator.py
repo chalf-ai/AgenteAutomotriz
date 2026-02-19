@@ -40,6 +40,20 @@ def _extract_answer(messages) -> str:
     return answer or "No pude generar una respuesta. ¿Puedes reformular?"
 
 
+def _looks_like_budget_or_short_reply(text: str) -> bool:
+    """Mensajes como '15 millones', '20 m', '12' son respuestas de presupuesto → no off-topic."""
+    t = text.strip().lower()
+    if not t or len(t) > 80:
+        return False
+    if "millon" in t or "millones" in t:
+        return True
+    if t.endswith(" m") and len(t) <= 10:
+        return True
+    if t.replace(".", "").replace(",", "").replace(" ", "").isdigit() and len(t) <= 15:
+        return True
+    return False
+
+
 async def chat(
     user_message: str,
     thread_id: str,
@@ -51,7 +65,9 @@ async def chat(
         yield "Por favor escribe tu pregunta o lo que buscas en un auto."
         return
 
-    if check_off_topic and not is_automotive_related(user_message):
+    # No marcar como off-topic respuestas cortas de presupuesto ("15 millones", "20 m", etc.)
+    skip_off_topic = _looks_like_budget_or_short_reply(user_message)
+    if check_off_topic and not skip_off_topic and not is_automotive_related(user_message):
         yield "Soy un asesor de ventas de automóviles. Solo puedo ayudarte con temas de autos: búsqueda, precios, marcas, modelos, etc. ¿En qué puedo ayudarte con tu próximo auto?"
         return
 
@@ -66,7 +82,13 @@ async def chat(
     inputs = {"messages": [{"role": "user", "content": user_message}]}
 
     try:
-        result = await agent.ainvoke(inputs, config=config)
+        import asyncio
+        # Ejecutar en executor para usar checkpointer SQLite (sync) sin bloquear el event loop
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(
+            None,
+            lambda: agent.invoke(inputs, config=config),
+        )
         messages = result.get("messages") or []
         answer = _extract_answer(messages)
         yield answer
