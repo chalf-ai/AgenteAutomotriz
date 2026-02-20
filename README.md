@@ -18,6 +18,7 @@ Agente de ventas (Jaime) para vehículos usados, con OpenAI y preparado para Wha
 3. **Variables de entorno** (en Railway → Variables):
    - `OPENAI_API_KEY` (obligatorio)
    - `OPENAI_MODEL` (opcional, default: gpt-4o-mini)
+   - **Memoria del agente (contexto por conversación):** En Railway el disco es efímero, así que la memoria en SQLite se pierde. Añade **Postgres** al proyecto (Railway → Add Plugin → PostgreSQL) y configura la variable que Railway crea: `DATABASE_URL`. El agente usará Postgres para guardar el estado por `thread_id` y así recordar la conversación entre mensajes.
    - Para WhatsApp cuando lo actives: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_WEBHOOK_VERIFY_TOKEN`
 
 4. **URL pública**  

@@ -26,5 +26,7 @@ STOCK_DB_PATH = os.getenv("STOCK_DB_PATH") or str(DATA_DIR / "stock.db")
 FAQ_CACHE_PATH = os.getenv("FAQ_CACHE_PATH") or str(DATA_DIR / "faq_cache.db")
 LEADS_DB_PATH = os.getenv("LEADS_DB_PATH") or str(DATA_DIR / "leads.db")
 CHECKPOINT_DB_PATH = os.getenv("CHECKPOINT_DB_PATH") or str(DATA_DIR / "checkpoints.db")
+# En Railway: usa Postgres para memoria (el disco es efímero). Variable típica: DATABASE_URL
+CHECKPOINT_POSTGRES_URI = os.getenv("CHECKPOINT_POSTGRES_URI") or os.getenv("DATABASE_URL") or ""
 
 DATA_DIR.mkdir(parents=True, exist_ok=True)

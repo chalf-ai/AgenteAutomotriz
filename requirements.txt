@@ -7,6 +7,9 @@ langchain-openai>=0.2.0
 langchain-community>=0.3.0
 langgraph>=0.2.0
 langgraph-checkpoint-sqlite>=3.0.0
+# Opcional: para memoria persistente en Railway (checkpoints en Postgres)
+langgraph-checkpoint-postgres>=3.0.0
+psycopg[binary]>=3.2.0
 
 # OpenAI API
 openai>=1.0.0

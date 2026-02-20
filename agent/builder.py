@@ -6,15 +6,48 @@ import sqlite3
 from langgraph.prebuilt import create_react_agent
 from langchain_openai import ChatOpenAI
 
-from config import OPENAI_API_KEY, OPENAI_MODEL, CHECKPOINT_DB_PATH
+from config import (
+    OPENAI_API_KEY,
+    OPENAI_MODEL,
+    CHECKPOINT_DB_PATH,
+    CHECKPOINT_POSTGRES_URI,
+)
 from agent.tools import search_stock, get_stock_summary, register_lead
 
-# Memoria persistente en SQLite (mismo thread_id = misma conversación aunque reinicie el servidor)
+# Memoria: Postgres en Railway (persistente) o SQLite local (se pierde si el disco es efímero)
 _checkpoint_conn: sqlite3.Connection | None = None
+_postgres_checkpointer = None
 
 
 def _get_checkpointer():
-    global _checkpoint_conn
+    global _checkpoint_conn, _postgres_checkpointer
+
+    # En Railway: usar Postgres para que el thread_id recupere la conversación entre requests
+    uri = (CHECKPOINT_POSTGRES_URI or "").strip()
+    if uri.startswith("postgres://"):
+        uri = "postgresql://" + uri[len("postgres://"):]
+    if uri:
+        if _postgres_checkpointer is None:
+            try:
+                from psycopg import connect
+                from psycopg.rows import dict_row
+                from langgraph.checkpoint.postgres import PostgresSaver
+
+                # Conexión persistente (no cerrar) para que el agente cargue/guarde estado por thread_id
+                conn = connect(
+                    uri,
+                    autocommit=True,
+                    prepare_threshold=0,
+                    row_factory=dict_row,
+                )
+                _postgres_checkpointer = PostgresSaver(conn)
+                _postgres_checkpointer.setup()
+            except Exception as e:
+                from langgraph.checkpoint.memory import MemorySaver
+                _postgres_checkpointer = MemorySaver()
+        return _postgres_checkpointer
+
+    # Local: SQLite (persiste si el directorio data/ es estable)
     if _checkpoint_conn is None:
         _checkpoint_conn = sqlite3.connect(CHECKPOINT_DB_PATH, check_same_thread=False)
     try:
