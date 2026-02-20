@@ -4,6 +4,7 @@ Expone /health, /chat y preparado para webhook de WhatsApp.
 """
 from __future__ import annotations
 
+import traceback
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 from uuid import uuid4
@@ -14,6 +15,14 @@ from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 
 from config import STOCK_FILE, STOCK_DB_PATH
 from stock.repository import StockRepository
+
+# Cabeceras CORS para respuestas (incluidas errores), así el navegador no bloquea por CORS
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "*",
+    "Access-Control-Expose-Headers": "*",
+}
 
 
 @asynccontextmanager
@@ -32,8 +41,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Agente Pompeyo Carrasco Usados", lifespan=lifespan)
 
-# CORS: permite que Lovable u otra interfaz llame a la API desde el navegador
-# allow_credentials=False cuando origins es "*" (requerido por el navegador)
+# CORS primero: permite que Lovable u otra interfaz llame desde el navegador
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -41,7 +49,25 @@ app.add_middleware(
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
     expose_headers=["*"],
+    max_age=600,
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Asegura que cualquier error devuelva JSON con CORS para que el frontend no vea 'Failed to fetch'."""
+    print(f"[Error] {exc}\n{traceback.format_exc()}")
+    return JSONResponse(
+        status_code=500,
+        content={"reply": "Disculpa, hubo un error en el servidor. Intenta de nuevo.", "thread_id": ""},
+        headers=CORS_HEADERS,
+    )
+
+
+@app.get("/")
+async def root():
+    """Raíz: confirma que el servicio está arriba (útil para Railway y pruebas)."""
+    return {"service": "Agente Pompeyo Carrasco Usados", "status": "ok"}
 
 
 @app.get("/health")
@@ -83,7 +109,6 @@ async def api_chat(request: Request):
     try:
         body = await request.json()
     except Exception:
-        from fastapi.responses import JSONResponse
         return JSONResponse(
             {"reply": "Error: envía un JSON con 'message'.", "thread_id": ""},
             status_code=422,
