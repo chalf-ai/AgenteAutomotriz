@@ -66,6 +66,60 @@ def _looks_like_option_choice(text: str) -> bool:
     return False
 
 
+def _looks_like_greeting_or_very_short(text: str) -> bool:
+    """Saludos o mensajes muy cortos (hola, ok, sí, gracias) → no off-topic."""
+    t = text.strip()
+    if not t:
+        return False
+    lower = t.lower()
+    # Saludos explícitos
+    greetings = (
+        "hola", "buenas", "buenos días", "buen día", "buenas tardes", "buenas noches",
+        "hey", "hi", "hello", "qué tal", "tal", "saludos", "buenass", "ola",
+    )
+    if any(lower == g or lower.startswith(g + " ") or lower.startswith(g + ",") for g in greetings):
+        return True
+    if any(g in lower and len(lower) <= 25 for g in ("hola", "buenas", "buenos", "saludos", "qué tal")):
+        return True
+    # Mensajes muy cortos: el agente puede responder sin castigar (sí, no, ok, gracias, dale, etc.)
+    if len(t) <= 20 and not any(c.isdigit() for c in t):
+        letters_etc = sum(1 for c in t if c.isalpha() or c.isspace() or c in ".,!?¿¡'")
+        if letters_etc >= len(t) * 0.8:
+            return True
+    return False
+
+
+def _looks_like_lead_data_or_follow_up(text: str) -> bool:
+    """Nombre, RUT, correo o frases tipo 'listo te envié mis datos' → no off-topic (es respuesta al agente)."""
+    t = text.strip()
+    if not t or len(t) > 120:
+        return False
+    lower = t.lower()
+    # Correo electrónico
+    if "@" in t and "." in t:
+        return True
+    # RUT: dígitos, opcionalmente con . - y k
+    clean = t.replace(".", "").replace(",", "").replace("-", "").replace(" ", "").lower()
+    if clean.endswith("k"):
+        clean = clean[:-1]
+    if clean.isdigit() and 7 <= len(clean) <= 12:
+        return True
+    # Frases cortas de seguimiento / envío de datos
+    follow_phrases = (
+        "listo", "te envi", "mi nombre", "mi correo", "mi rut", "ahí está", "envié", "enviado",
+        "datos", "nombre es", "correo es", "rut es", "te pas", "aquí está", "es ", "soy ",
+    )
+    if len(lower) <= 80 and any(p in lower for p in follow_phrases):
+        return True
+    # Posible nombre: una o más palabras, mayormente letras
+    words = t.split()
+    if 1 <= len(words) <= 6 and len(t) <= 60:
+        letters = sum(1 for c in t if c.isalpha() or c.isspace() or c in ".-'")
+        if letters >= 0.7 * len(t):
+            return True
+    return False
+
+
 async def chat(
     user_message: str,
     thread_id: str,
@@ -77,8 +131,13 @@ async def chat(
         yield "Por favor escribe tu pregunta o lo que buscas en un auto."
         return
 
-    # No marcar como off-topic: presupuesto ("15 millones"), o elegir opción ("opcion 5", "la 2")
-    skip_off_topic = _looks_like_budget_or_short_reply(user_message) or _looks_like_option_choice(user_message)
+    # No marcar como off-topic: saludos, presupuesto, opción, datos de lead, o mensajes muy cortos
+    skip_off_topic = (
+        _looks_like_greeting_or_very_short(user_message)
+        or _looks_like_budget_or_short_reply(user_message)
+        or _looks_like_option_choice(user_message)
+        or _looks_like_lead_data_or_follow_up(user_message)
+    )
     if check_off_topic and not skip_off_topic and not is_automotive_related(user_message):
         yield "Soy un asesor de ventas de automóviles. Solo puedo ayudarte con temas de autos: búsqueda, precios, marcas, modelos, etc. ¿En qué puedo ayudarte con tu próximo auto?"
         return
