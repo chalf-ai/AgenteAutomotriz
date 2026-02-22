@@ -29,4 +29,10 @@ CHECKPOINT_DB_PATH = os.getenv("CHECKPOINT_DB_PATH") or str(DATA_DIR / "checkpoi
 # En Railway: usa Postgres para memoria (el disco es efímero). Variable típica: DATABASE_URL
 CHECKPOINT_POSTGRES_URI = os.getenv("CHECKPOINT_POSTGRES_URI") or os.getenv("DATABASE_URL") or ""
 
+# Financiamiento: tasa mensual 3,8% (no revelar al cliente). Cuota se muestra redondeada a la milésima.
+FINANCIAMIENTO_TASA_MENSUAL = float(os.getenv("FINANCIAMIENTO_TASA_MENSUAL", "0.038"))
+FINANCIAMIENTO_PIE_MIN = 0.30   # 30%
+FINANCIAMIENTO_PIE_MAX = 0.50   # 50%
+FINANCIAMIENTO_PLAZOS = (24, 36, 48)
+
 DATA_DIR.mkdir(parents=True, exist_ok=True)

@@ -1,11 +1,18 @@
-"""Herramientas del agente: consulta de stock y registro de leads."""
+"""Herramientas del agente: consulta de stock, cálculo de cuota y registro de leads."""
 from __future__ import annotations
 
+import math
 from typing import Optional
 
 from langchain_core.tools import tool
 
-from config import STOCK_DB_PATH
+from config import (
+    STOCK_DB_PATH,
+    FINANCIAMIENTO_TASA_MENSUAL,
+    FINANCIAMIENTO_PIE_MIN,
+    FINANCIAMIENTO_PIE_MAX,
+    FINANCIAMIENTO_PLAZOS,
+)
 from stock.repository import StockRepository
 from agent import leads as leads_module
 
@@ -63,6 +70,42 @@ def search_stock(
         link_s = f" | Link: https://{v.get('link')}" if v.get("link") and not str(v.get("link", "")).startswith("http") else (f" | Link: {v.get('link')}" if v.get("link") else "")
         lines.append(f"{i}. {marca_m} {modelo_m}{version_s} ({año}) - {precio_s} - {km_s}{ubicacion}{link_s}")
     return "Opciones encontradas:\n" + "\n".join(lines)
+
+
+def _valor_cuota(monto_financiar: float, num_cuotas: int) -> float:
+    """Cuota mensual con tasa mensual. Resultado redondeado a la milésima (ej. 318915 → 318000)."""
+    r = FINANCIAMIENTO_TASA_MENSUAL
+    n = num_cuotas
+    if r <= 0 or n <= 0:
+        return 0.0
+    factor = (r * (1 + r) ** n) / ((1 + r) ** n - 1)
+    cuota = monto_financiar * factor
+    return float(math.floor(cuota / 1000) * 1000)
+
+
+@tool
+def calculate_cuota(
+    precio_lista: float,
+    pie: float,
+    plazo: int = 36,
+) -> str:
+    """Calcula el valor cuota mensual para un vehículo. precio_lista y pie en pesos. plazo: 24, 36 o 48 cuotas. El PIE se ajusta: mínimo 30% del precio, máximo 50% (si el cliente da más del 50%, se simula con 50% y el resto queda para él). La cuota se muestra redondeada a la milésima (ej. 318000). Usar cuando el cliente pregunte por financiamiento o diga cuánto puede pagar al mes y cuánto de pie."""
+    if precio_lista <= 0:
+        return "El precio debe ser mayor a 0."
+    if plazo not in FINANCIAMIENTO_PLAZOS:
+        plazo = 36
+    pie_min = precio_lista * FINANCIAMIENTO_PIE_MIN
+    pie_max = precio_lista * FINANCIAMIENTO_PIE_MAX
+    pie_efectivo = max(pie_min, min(pie_max, pie))
+    monto_financiar = precio_lista - pie_efectivo
+    if monto_financiar <= 0:
+        return "El monto a financiar debe ser positivo. Ajusta el pie (entre 30% y 50% del precio)."
+    cuota = _valor_cuota(monto_financiar, plazo)
+    pie_pct = (pie_efectivo / precio_lista) * 100
+    return (
+        f"Precio: ${precio_lista:,.0f}. Pie usado en simulación: ${pie_efectivo:,.0f} ({pie_pct:.0f}%). "
+        f"Monto a financiar: ${monto_financiar:,.0f}. A {plazo} cuotas, valor cuota: ${cuota:,.0f}/mes."
+    )
 
 
 @tool
