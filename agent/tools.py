@@ -91,6 +91,15 @@ def _valor_cuota(monto_financiar: float, num_cuotas: int) -> float:
     return float(math.floor(cuota / 1000) * 1000)
 
 
+def _factor_cuota(num_cuotas: int) -> float:
+    """Factor para cuota: cuota = monto_financiar * factor. Para inverso: monto_max = cuota_deseada / factor."""
+    r = FINANCIAMIENTO_TASA_MENSUAL
+    n = num_cuotas
+    if r <= 0 or n <= 0:
+        return 0.0
+    return (r * (1 + r) ** n) / ((1 + r) ** n - 1)
+
+
 @tool
 def calculate_cuota(
     precio_lista: float,
@@ -113,6 +122,29 @@ def calculate_cuota(
     return (
         f"Precio: ${precio_lista:,.0f}. Pie usado en simulación: ${pie_efectivo:,.0f} ({pie_pct:.0f}%). "
         f"Monto a financiar: ${monto_financiar:,.0f}. A {plazo} cuotas, valor cuota: ${cuota:,.0f}/mes."
+    )
+
+
+@tool
+def estimate_precio_max_for_cuota(
+    pie: float,
+    cuota_deseada: float,
+    plazo: int = 36,
+) -> str:
+    """Dado el PIE del cliente (en pesos) y la cuota mensual que quiere pagar (ej. 300000), devuelve el precio máximo de vehículo que podría pagar (pie + financiamiento) para que la cuota no supere ese monto. Usar cuando el cliente diga "tengo X de pie y puedo pagar Y al mes": con el precio_max devuelto, llama search_stock(precio_max=este_valor, order_by_precio=desc) y luego calculate_cuota para cada resultado."""
+    if pie < 0 or cuota_deseada <= 0:
+        return "Pie y cuota deseada deben ser positivos."
+    if plazo not in FINANCIAMIENTO_PLAZOS:
+        plazo = 36
+    factor = _factor_cuota(plazo)
+    if factor <= 0:
+        return "No se pudo calcular."
+    monto_financiar_max = cuota_deseada / factor
+    precio_max = pie + monto_financiar_max
+    return (
+        f"Con pie ${pie:,.0f} y cuota deseada ${cuota_deseada:,.0f}/mes a {plazo} cuotas, "
+        f"el precio máximo de vehículo es aproximadamente ${precio_max:,.0f}. "
+        f"Usa search_stock(precio_max={int(precio_max)}, order_by_precio=desc, limit=5) y luego calculate_cuota para cada vehículo."
     )
 
 
