@@ -11,6 +11,16 @@ from config import FAQ_CACHE_PATH
 _faq: FAQCache | None = None
 _agent = None
 
+# Contador de off-topic por thread: tras 3 respuestas off-topic, cerramos con mensaje gentil
+_thread_off_topic_count: dict[str, int] = {}
+
+OFF_TOPIC_MESSAGES = (
+    "Soy un asesor de ventas de automóviles. Solo puedo ayudarte con temas de autos: búsqueda, precios, marcas, modelos, etc. ¿En qué puedo ayudarte con tu próximo auto?",
+    "En este chat estamos para ayudarte con vehículos usados: búsqueda, financiamiento, opciones. Si tienes alguna duda sobre autos, dime.",
+    "Por acá nos enfocamos en autos usados de Pompeyo Carrasco. ¿Buscas algún vehículo o quieres ver opciones de financiamiento?",
+)
+OFF_TOPIC_GOODBYE = "Para no ocupar este espacio con temas que no puedo atender, te dejo por acá. Cuando necesites algo de autos usados, aquí estaré. ¡Que tengas un buen día!"
+
 
 def _get_faq() -> FAQCache:
     global _faq
@@ -120,6 +130,18 @@ def _looks_like_lead_data_or_follow_up(text: str) -> bool:
     return False
 
 
+def _looks_like_financing_follow_up(text: str) -> bool:
+    """'La cuota es cara', 'muy alta', 'me parece cara' = seguimiento de financiamiento → no off-topic."""
+    t = text.strip().lower()
+    if not t or len(t) > 80:
+        return False
+    financing_words = (
+        "cuota", "cara", "barata", "alta", "baja", "financiar", "financiamiento",
+        "pie", "plazo", "plazos", "mensual", "pagando", "pagar ",
+    )
+    return any(w in t for w in financing_words)
+
+
 async def chat(
     user_message: str,
     thread_id: str,
@@ -131,16 +153,28 @@ async def chat(
         yield "Por favor escribe tu pregunta o lo que buscas en un auto."
         return
 
-    # No marcar como off-topic: saludos, presupuesto, opción, datos de lead, o mensajes muy cortos
+    # No marcar como off-topic: saludos, presupuesto, opción, datos de lead, seguimiento financiamiento, o mensajes muy cortos
     skip_off_topic = (
         _looks_like_greeting_or_very_short(user_message)
         or _looks_like_budget_or_short_reply(user_message)
         or _looks_like_option_choice(user_message)
         or _looks_like_lead_data_or_follow_up(user_message)
+        or _looks_like_financing_follow_up(user_message)
     )
     if check_off_topic and not skip_off_topic and not is_automotive_related(user_message):
-        yield "Soy un asesor de ventas de automóviles. Solo puedo ayudarte con temas de autos: búsqueda, precios, marcas, modelos, etc. ¿En qué puedo ayudarte con tu próximo auto?"
+        global _thread_off_topic_count
+        count = _thread_off_topic_count.get(thread_id, 0) + 1
+        _thread_off_topic_count[thread_id] = count
+        if count >= 3:
+            _thread_off_topic_count[thread_id] = 0
+            yield OFF_TOPIC_GOODBYE
+        else:
+            msg_index = min(count - 1, len(OFF_TOPIC_MESSAGES) - 1)
+            yield OFF_TOPIC_MESSAGES[msg_index]
         return
+
+    # Si llegó aquí y no fue off-topic, reiniciar contador de off-topic para este thread
+    _thread_off_topic_count[thread_id] = 0
 
     if use_faq_cache:
         cached = _get_faq().get(user_message)
