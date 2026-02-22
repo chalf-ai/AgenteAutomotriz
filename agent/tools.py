@@ -37,8 +37,9 @@ def search_stock(
     marca: Optional[str] = None,
     modelo: Optional[str] = None,
     limit: int = 5,
+    order_by_precio: str = "asc",
 ) -> str:
-    """Busca vehículos usados. precio_min y precio_max van en PESOS CHILENOS (número completo): ej. 12 millones = 12000000, 20 millones = 20000000. Siempre usa limit=5 y pasa el presupuesto en pesos (no en millones). Usar cuando el cliente mencione presupuesto o qué autos busca."""
+    """Busca vehículos usados en el stock real. precio_min y precio_max en PESOS (ej. 20000000). order_by_precio: "asc" o "desc". Para presupuesto (hasta 20/30/40M) usa order_by_precio=desc. IMPORTANTE: Solo puedes mostrar al cliente vehículos y links que devuelva esta herramienta; NUNCA inventes productos ni URLs."""
     repo = _get_repo()
     results = repo.search(
         precio_min=precio_min,
@@ -49,6 +50,7 @@ def search_stock(
         marca=marca,
         modelo=modelo,
         limit=limit,
+        order_by_precio=order_by_precio or "asc",
     )
     if not results:
         return "No hay vehículos que coincidan con esos criterios."
@@ -67,8 +69,14 @@ def search_stock(
         ubicacion = ""
         if v.get("sucursal") or v.get("comuna"):
             ubicacion = f" | Ubicación: {v.get('sucursal', '')} ({v.get('comuna', '')})".strip().rstrip("()")
-        link_s = f" | Link: https://{v.get('link')}" if v.get("link") and not str(v.get("link", "")).startswith("http") else (f" | Link: {v.get('link')}" if v.get("link") else "")
-        lines.append(f"{i}. {marca_m} {modelo_m}{version_s} ({año}) - {precio_s} - {km_s}{ubicacion}{link_s}")
+        link_raw = (v.get("link") or "").strip()
+        if link_raw and not link_raw.startswith("http"):
+            link_raw = f"https://{link_raw}"
+        if link_raw:
+            lines.append(f"{i}. {marca_m} {modelo_m}{version_s} ({año}) - {precio_s} - {km_s}{ubicacion}")
+            lines.append(link_raw)
+        else:
+            lines.append(f"{i}. {marca_m} {modelo_m}{version_s} ({año}) - {precio_s} - {km_s}{ubicacion}")
     return "Opciones encontradas:\n" + "\n".join(lines)
 
 

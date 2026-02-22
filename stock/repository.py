@@ -138,6 +138,7 @@ class StockRepository:
         marca: str | None = None,
         modelo: str | None = None,
         limit: int = 50,
+        order_by_precio: str = "asc",
     ) -> list[dict[str, Any]]:
         conditions = []
         params: list[Any] = []
@@ -163,8 +164,9 @@ class StockRepository:
             conditions.append("LOWER(modelo) LIKE ?")
             params.append(f"%{modelo.lower()}%")
         where = " AND ".join(conditions) if conditions else "1=1"
+        order = "DESC" if (order_by_precio or "").strip().lower() == "desc" else "ASC"
         params.append(limit)
-        sql = f"SELECT * FROM vehiculos WHERE {where} ORDER BY precio ASC LIMIT ?"
+        sql = f"SELECT * FROM vehiculos WHERE {where} ORDER BY precio {order} LIMIT ?"
         with self._conn() as conn:
             rows = conn.execute(sql, params).fetchall()
         return [dict(row) for row in rows]
