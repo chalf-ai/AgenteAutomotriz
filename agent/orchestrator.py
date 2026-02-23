@@ -182,18 +182,35 @@ def _looks_like_monto_mas_plazo(text: str) -> bool:
     return 1 <= len(left_clean) <= 10
 
 
+def _looks_like_plazo_only(text: str) -> bool:
+    """Frases cortas que solo preguntan por plazo: 'a 36', 'a 48', 'y a 24?', 'en 36 cuotas?' → no off-topic."""
+    t = text.strip().lower()
+    if not t or len(t) > 35:
+        return False
+    # Solo números de plazo con contexto mínimo: "a 36", "a 48", "y a 24?", "en 36", "en 48 cuotas?"
+    clean = t.replace("?", " ").replace(".", " ").replace("!", " ")
+    if "24" in clean or "36" in clean or "48" in clean:
+        rest = clean.replace("24", "").replace("36", "").replace("48", "")
+        rest = rest.replace("a", "").replace("en", "").replace("cuotas", "").replace("cuota", "").replace("y", "").replace(" ", "")
+        if len(rest) <= 2:  # casi solo conectores
+            return True
+    return False
+
+
 def _looks_like_financing_follow_up(text: str) -> bool:
-    """Cualquier seguimiento de financiamiento: palabras clave O patrón monto + en + plazo (ej. 5m en 36, 8 millones en 24)."""
+    """Cualquier seguimiento de financiamiento: palabras clave, plazo solo, o patrón monto + en + plazo."""
     t = text.strip().lower()
     if not t or len(t) > 80:
         return False
+    if _looks_like_plazo_only(text):
+        return True
     financing_words = (
         "cuota", "cara", "barata", "alta", "baja", "financiar", "financiamiento",
         "pie", "plazo", "plazos", "mensual", "pagando", "pagar ",
     )
     if any(w in t for w in financing_words):
         return True
-    # Cualquier "X en 24/36/48" donde X parezca monto (pie): 5m, 8 millones, 10, 8000000, 8.000.000
+    # Cualquier "X en 24/36/48" donde X parezca monto (pie)
     if _looks_like_monto_mas_plazo(text):
         return True
     return False
