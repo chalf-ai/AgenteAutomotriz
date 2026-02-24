@@ -1,6 +1,7 @@
 """Orquestador: cache FAQ, off-topic e invocación del agente."""
 from __future__ import annotations
 
+import re
 from typing import AsyncGenerator
 
 from agent.off_topic import is_automotive_related
@@ -14,12 +15,8 @@ _agent = None
 # Contador de off-topic por thread: tras 3 respuestas off-topic, cerramos con mensaje gentil
 _thread_off_topic_count: dict[str, int] = {}
 
-# Off-topic: si parece financiamiento (ej. "5m en 36") → aclaración para no cortar el hilo; si no (ej. "valor uf") → genérico
-OFF_TOPIC_GENERIC = "Soy un asesor de ventas de automóviles. Solo puedo ayudarte con temas de autos: búsqueda, precios, marcas, modelos, financiamiento, etc. ¿En qué puedo ayudarte con tu próximo auto?"
-OFF_TOPIC_CLARIFY = (
-    "No entendí bien. ¿Podrías aclarar si te refieres al presupuesto del auto, al pie que darías o a la cuota mensual? Así te ayudo con el financiamiento.",
-    "No estoy seguro de entender. ¿Hablas del precio del vehículo, del pie o de la cuota que podrías pagar? Con eso te doy opciones más claras.",
-)
+# Off-topic real = temas que no tienen que ver con venta de autos. "No entender" (ej. "20%") NO es off-topic: el agente debe aclarar.
+# No usamos mensaje genérico tipo "Soy un asesor, solo temas de autos" porque mata la conversación; todo lo ambiguo va al agente.
 OFF_TOPIC_GOODBYE = "Para no ocupar este espacio con temas que no puedo atender, te dejo por acá. Cuando necesites algo de autos usados, aquí estaré. ¡Que tengas un buen día!"
 
 
@@ -197,11 +194,28 @@ def _looks_like_plazo_only(text: str) -> bool:
     return False
 
 
+def _looks_like_pie_percentage(text: str) -> bool:
+    """Respuesta en porcentaje de pie: '20%', '30 por ciento', '40% de entrada' → no off-topic."""
+    t = text.strip().lower()
+    if not t or len(t) > 40:
+        return False
+    # "20%", "30 %", "40%"
+    if re.search(r"^\s*\d{1,3}\s*%", t) or re.search(r"\d{1,3}\s*%\s*$", t):
+        return True
+    if "%" in t and any(c.isdigit() for c in t):
+        return True
+    if "por ciento" in t or "porciento" in t:
+        return True
+    return False
+
+
 def _looks_like_financing_follow_up(text: str) -> bool:
-    """Cualquier seguimiento de financiamiento: palabras clave, plazo solo, o patrón monto + en + plazo."""
+    """Cualquier seguimiento de financiamiento: palabras clave, plazo solo, porcentaje de pie, o patrón monto + en + plazo."""
     t = text.strip().lower()
     if not t or len(t) > 80:
         return False
+    if _looks_like_pie_percentage(text):
+        return True
     if _looks_like_plazo_only(text):
         return True
     financing_words = (
@@ -285,6 +299,7 @@ async def chat(
         or _looks_like_lead_data_or_follow_up(user_message)
         or _looks_like_financing_follow_up(user_message)
     )
+    # Off-topic = claramente no tiene que ver con autos. Si no entendemos (ej. "20%"), NO es off-topic: va al agente para que aclare.
     if check_off_topic and not skip_off_topic and not is_automotive_related(user_message):
         global _thread_off_topic_count
         count = _thread_off_topic_count.get(thread_id, 0) + 1
@@ -292,21 +307,10 @@ async def chat(
         if count >= 3:
             _thread_off_topic_count[thread_id] = 0
             yield OFF_TOPIC_GOODBYE
-        else:
-            # Si parece fragmento de financiamiento (ej. "5m en 36") → aclaración; si no (ej. "valor uf") → genérico
-            if _looks_like_financing_fragment(user_message):
-                clarification = _off_topic_clarification(user_message)
-                if clarification:
-                    yield clarification
-                else:
-                    msg_index = min(count - 1, len(OFF_TOPIC_CLARIFY) - 1)
-                    yield OFF_TOPIC_CLARIFY[msg_index]
-            else:
-                yield OFF_TOPIC_GENERIC
-        return
-
-    # Si llegó aquí y no fue off-topic, reiniciar contador de off-topic para este thread
-    _thread_off_topic_count[thread_id] = 0
+            return
+        # 1ª o 2ª vez: no matar la conversación; enviar al agente para que entienda o pida aclaración.
+    else:
+        _thread_off_topic_count[thread_id] = 0
 
     if use_faq_cache:
         cached = _get_faq().get(user_message)
