@@ -10,7 +10,7 @@ import pandas as pd
 COLUMN_MAPPING = {
     "marca": ["marca", "brand", "make"],
     "modelo": ["modelo", "model"],
-    "año": ["año", "ao", "year", "anio", "ano"],
+    "año": ["año", "ao", "aoo", "year", "anio", "ano"],  # "aoo" = columna "Año" con ñ leída como U+FFFD
     "precio": ["precio", "price", "precio_usd", "precio lista"],
     "kilometraje": ["kilometraje", "km", "kilometros", "mileage"],
     "transmision": ["transmision", "transmicion", "transmission", "trans"],
@@ -29,19 +29,44 @@ COLUMN_MAPPING = {
 }
 
 
+def _normalize_col_name_for_match(name: str) -> str:
+    """Normaliza nombre de columna para matching: reemplaza caracteres de encoding roto (ej. U+FFFD)."""
+    s = name.lower().strip()
+    # Reemplazo Unicode (ej. ó leído mal) para que "Versin" coincida con "version"/"versión"
+    s = s.replace("\ufffd", "o").replace("\u00f3", "o")  # ó
+    return s
+
+
 def _normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     result = {}
-    cols_lower = {c.lower().strip(): c for c in df.columns}
+    # Clave normalizada -> nombre real de columna (para CSV con encoding roto, ej. Versin)
+    cols_lower = {_normalize_col_name_for_match(c): c for c in df.columns}
     for std_name, aliases in COLUMN_MAPPING.items():
         for alias in aliases:
-            if alias in cols_lower:
-                result[std_name] = df[cols_lower[alias]]
+            alias_norm = _normalize_col_name_for_match(alias)
+            if alias_norm in cols_lower:
+                result[std_name] = df[cols_lower[alias_norm]]
                 break
     return pd.DataFrame(result) if result else pd.DataFrame()
 
 
 def _coerce_numeric(series: pd.Series) -> pd.Series:
     return pd.to_numeric(series.replace({",": "", "": None}), errors="coerce")
+
+
+def _clean_encoding_errors(s: str) -> str:
+    """Reemplaza carácter de reemplazo Unicode (U+FFFD) en textos del CSV con encoding roto."""
+    if not isinstance(s, str) or "\ufffd" not in s:
+        return s
+    # Correcciones por contexto antes del reemplazo genérico
+    s = s.replace("Am\ufffdrico", "Americo").replace("AM\ufffdRICO", "AMERICO")
+    s = s.replace("\ufffdu\ufffdoa", "Nunoa").replace("\ufffduñoa", "Nunoa").replace("Ñu\ufffdoa", "Nunoa")
+    # Reemplazo genérico del resto de FFFD (ó, etc.)
+    s = s.replace("\ufffd", "o")
+    # Formas que quedan tras el genérico (ej. Ñuñoa -> ouooa)
+    if "ouooa" in s or " uooa" in s:
+        s = s.replace("ouooa", "Nunoa").replace(" uooa", "Nunoa")
+    return s.strip()
 
 
 def parse_stock_file(path: str | Path) -> list[dict[str, Any]]:
@@ -65,4 +90,8 @@ def parse_stock_file(path: str | Path) -> list[dict[str, Any]]:
     if "kilometraje" in df.columns:
         df["kilometraje"] = _coerce_numeric(df["kilometraje"])
     df = df.dropna(how="all")
+    # Limpiar U+FFFD en columnas de texto (ubicación, comuna, etc. con encoding roto)
+    for col in df.columns:
+        if df[col].dtype == object:
+            df[col] = df[col].astype(str).apply(_clean_encoding_errors)
     return df.to_dict(orient="records")

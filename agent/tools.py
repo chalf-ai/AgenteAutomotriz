@@ -44,7 +44,7 @@ def search_stock(
 ) -> str:
     """Busca vehículos usados en el stock real. precio_min y precio_max en PESOS (ej. 20000000). order_by_precio: "asc" o "desc". Para presupuesto (hasta 20/30/40M) usa order_by_precio=desc.
     Filtros por tipo de vehículo (usar cuando el cliente pida):
-    - segmento: CityCar, Suv, Sedan, Furgon (ej. "quiero un SUV" -> segmento="Suv")
+    - segmento: CityCar, Suv, Sedan, Camioneta, Furgon. Pickup o camioneta -> segmento="Camioneta" (NO Furgon; Furgon = van tipo Berlingo/Partner).
     - transmision: Automatico (AT, DCT, automático) o Mecanico (MT, mecánico)
     - combustible: Diesel, Gasolina, Hibrido, Electrico (ej. "diesel", "híbrido" -> combustible)
     IMPORTANTE: Solo puedes mostrar al cliente vehículos y links que devuelva esta herramienta; NUNCA inventes productos ni URLs."""
