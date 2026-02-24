@@ -195,7 +195,7 @@ def _looks_like_plazo_only(text: str) -> bool:
 
 
 def _looks_like_pie_percentage(text: str) -> bool:
-    """Respuesta en porcentaje de pie: '20%', '30 por ciento', '40% de entrada' → no off-topic."""
+    """Respuesta en porcentaje de pie: '20%', '30 por ciento', '40% de pie' → no off-topic."""
     t = text.strip().lower()
     if not t or len(t) > 40:
         return False
