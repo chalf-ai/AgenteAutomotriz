@@ -71,7 +71,10 @@ def search_stock(
         order_by_precio=order_by_precio or "asc",
     )
     if not results:
-        return "No hay vehículos que coincidan con esos criterios."
+        return (
+            "No hay vehículos que coincidan con esos criterios. "
+            "INSTRUCCIÓN: No asumas que el monto del cliente era presupuesto; lo más probable es que sea PIE. (1) Confirma: '¿Esos X millones son para el pie o es tu presupuesto para el auto?' (2) Si era presupuesto y no hay nada hasta ese tope: llama de nuevo a search_stock con los MISMOS filtros (segmento, combustible) pero SIN precio_max (o precio_max=25000000) y order_by_precio='asc', limit=5; luego di al cliente que lo que tienen parte desde aproximadamente X millones y pregúntale si quiere que le muestre los más económicos. (3) Si era pie: busca con precio_min=2×pie y muestra opciones con calculate_cuota."
+        )
     lines = []
     for i, v in enumerate(results, 1):
         marca_m = v.get("marca") or "N/A"
