@@ -69,9 +69,9 @@ def search_stock(
     for i, v in enumerate(results, 1):
         marca_m = v.get("marca") or "N/A"
         modelo_m = v.get("modelo") or "N/A"
-        version_s = (v.get("version") or "").strip()
-        if version_s:
-            version_s = f" - {version_s}"
+        version_val = (v.get("version") or "").strip()
+        # Versión siempre visible: evita que el agente la omita o ponga N/A
+        version_s = f" | Versión: {version_val}" if version_val else ""
         año = v.get("año") or "N/A"
         precio = v.get("precio")
         precio_s = f"${precio:,.0f}" if precio is not None else "N/A"
@@ -83,11 +83,13 @@ def search_stock(
         link_raw = (v.get("link") or "").strip()
         if link_raw and not link_raw.startswith("http"):
             link_raw = f"https://{link_raw}"
+        # Línea principal: Marca Modelo (Año) - Precio - Km [+ Versión: ...] [+ Ubicación]
+        linea = f"{i}. {marca_m} {modelo_m} ({año}) - {precio_s} - {km_s}{version_s}{ubicacion}"
         if link_raw:
-            lines.append(f"{i}. {marca_m} {modelo_m}{version_s} ({año}) - {precio_s} - {km_s}{ubicacion}")
+            lines.append(linea)
             lines.append(link_raw)
         else:
-            lines.append(f"{i}. {marca_m} {modelo_m}{version_s} ({año}) - {precio_s} - {km_s}{ubicacion}")
+            lines.append(linea)
     return "Opciones encontradas:\n" + "\n".join(lines)
 
 
