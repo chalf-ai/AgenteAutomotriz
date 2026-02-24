@@ -142,11 +142,23 @@ class StockRepository:
         segmento: str | None = None,
         transmision: str | None = None,
         combustible: str | None = None,
+        exclude_marca: str | None = None,
+        exclude_modelo: str | None = None,
+        exclude_combustible: str | None = None,
         limit: int = 50,
         order_by_precio: str = "asc",
     ) -> list[dict[str, Any]]:
         conditions = []
         params: list[Any] = []
+        if exclude_marca and exclude_marca.strip():
+            conditions.append("LOWER(TRIM(marca)) != LOWER(TRIM(?))")
+            params.append(exclude_marca.strip())
+        if exclude_modelo and exclude_modelo.strip():
+            conditions.append("LOWER(TRIM(modelo)) != LOWER(TRIM(?))")
+            params.append(exclude_modelo.strip())
+        if exclude_combustible and exclude_combustible.strip():
+            conditions.append("(combustible IS NULL OR TRIM(COALESCE(combustible,'')) = '' OR LOWER(TRIM(combustible)) != LOWER(TRIM(?)))")
+            params.append(exclude_combustible.strip())
         if precio_min is not None:
             conditions.append("precio >= ?")
             params.append(precio_min)

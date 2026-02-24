@@ -39,6 +39,9 @@ def search_stock(
     segmento: Optional[str] = None,
     transmision: Optional[str] = None,
     combustible: Optional[str] = None,
+    exclude_marca: Optional[str] = None,
+    exclude_modelo: Optional[str] = None,
+    exclude_combustible: Optional[str] = None,
     limit: int = 5,
     order_by_precio: str = "asc",
 ) -> str:
@@ -47,6 +50,7 @@ def search_stock(
     - segmento: CityCar, Suv, Sedan, Camioneta, Furgon. Pickup o camioneta -> segmento="Camioneta" (NO Furgon; Furgon = van tipo Berlingo/Partner).
     - transmision: Automatico (AT, DCT, automático) o Mecanico (MT, mecánico)
     - combustible: Diesel, Gasolina, Hibrido, Electrico (ej. "diesel", "híbrido" -> combustible)
+    Excluir: "que no sea Nissan" -> exclude_marca="Nissan". "que no sea Navara" -> exclude_modelo="Navara". "no quiero eléctrico" / "no me gustan los eléctricos" -> exclude_combustible="Electrico". "no diesel" -> exclude_combustible="Diesel". Mantén el resto de filtros (segmento, combustible si lo pide, etc.).
     IMPORTANTE: Solo puedes mostrar al cliente vehículos y links que devuelva esta herramienta; NUNCA inventes productos ni URLs."""
     repo = _get_repo()
     results = repo.search(
@@ -60,6 +64,9 @@ def search_stock(
         segmento=segmento,
         transmision=transmision,
         combustible=combustible,
+        exclude_marca=exclude_marca,
+        exclude_modelo=exclude_modelo,
+        exclude_combustible=exclude_combustible,
         limit=limit,
         order_by_precio=order_by_precio or "asc",
     )
