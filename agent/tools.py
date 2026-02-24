@@ -51,7 +51,7 @@ def search_stock(
     - transmision: Automatico (AT, DCT, automático) o Mecanico (MT, mecánico)
     - combustible: Diesel, Gasolina, Hibrido, Electrico (ej. "diesel", "híbrido" -> combustible)
     Excluir: "que no sea Nissan" -> exclude_marca="Nissan". "que no sea Navara" -> exclude_modelo="Navara". "no quiero eléctrico" / "no me gustan los eléctricos" -> exclude_combustible="Electrico". "no diesel" -> exclude_combustible="Diesel". Mantén el resto de filtros (segmento, combustible si lo pide, etc.).
-    IMPORTANTE: Solo puedes mostrar al cliente vehículos y links que devuelva esta herramienta; NUNCA inventes productos ni URLs."""
+    IMPORTANTE: Solo puedes mostrar vehículos y links que devuelva esta herramienta; NUNCA inventes. Si devuelve vacío: no cierres con 'no hay'; aclara pie vs presupuesto, ofrece los más económicos (misma búsqueda con precio_max más alto o sin tope, order_by_precio=asc) o si piden un modelo que no está, ofrece alternativas del mismo tipo."""
     repo = _get_repo()
     results = repo.search(
         precio_min=precio_min,
