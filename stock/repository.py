@@ -36,6 +36,7 @@ def _create_schema(conn: sqlite3.Connection) -> None:
             version TEXT,
             placa_patente TEXT,
             link TEXT,
+            segmento TEXT,
             raw_json TEXT,
             updated_at TEXT DEFAULT (datetime('now'))
         );
@@ -47,7 +48,7 @@ def _create_schema(conn: sqlite3.Connection) -> None:
         CREATE INDEX IF NOT EXISTS idx_vehiculos_año_precio ON vehiculos(año, precio);
     """)
     # Migrar DBs antiguas: agregar columnas nuevas si no existen
-    for col in ["sucursal", "ubicacion", "comuna", "version", "placa_patente", "link"]:
+    for col in ["sucursal", "ubicacion", "comuna", "version", "placa_patente", "link", "segmento"]:
         try:
             conn.execute(f"ALTER TABLE vehiculos ADD COLUMN {col} TEXT")
         except sqlite3.OperationalError:
@@ -101,8 +102,8 @@ class StockRepository:
                     INSERT INTO vehiculos
                     (id_externo, marca, modelo, año, precio, kilometraje,
                      transmision, combustible, color, estado,
-                     sucursal, ubicacion, comuna, version, placa_patente, link, raw_json)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     sucursal, ubicacion, comuna, version, placa_patente, link, segmento, raw_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         id_externo,
@@ -121,6 +122,7 @@ class StockRepository:
                         _str(r.get("version")),
                         _str(r.get("placa_patente")),
                         _str(r.get("link")),
+                        _str(r.get("segmento")),
                         json.dumps(r, ensure_ascii=False),
                     ),
                 )
@@ -137,6 +139,9 @@ class StockRepository:
         km_max: float | None = None,
         marca: str | None = None,
         modelo: str | None = None,
+        segmento: str | None = None,
+        transmision: str | None = None,
+        combustible: str | None = None,
         limit: int = 50,
         order_by_precio: str = "asc",
     ) -> list[dict[str, Any]]:
@@ -163,6 +168,15 @@ class StockRepository:
         if modelo:
             conditions.append("LOWER(modelo) LIKE ?")
             params.append(f"%{modelo.lower()}%")
+        if segmento and segmento.strip():
+            conditions.append("LOWER(TRIM(segmento)) = LOWER(TRIM(?))")
+            params.append(segmento.strip())
+        if transmision and transmision.strip():
+            conditions.append("LOWER(TRIM(transmision)) = LOWER(TRIM(?))")
+            params.append(transmision.strip())
+        if combustible and combustible.strip():
+            conditions.append("LOWER(TRIM(combustible)) = LOWER(TRIM(?))")
+            params.append(combustible.strip())
         where = " AND ".join(conditions) if conditions else "1=1"
         order = "DESC" if (order_by_precio or "").strip().lower() == "desc" else "ASC"
         params.append(limit)

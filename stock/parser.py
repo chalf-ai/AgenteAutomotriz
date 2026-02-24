@@ -10,19 +10,20 @@ import pandas as pd
 COLUMN_MAPPING = {
     "marca": ["marca", "brand", "make"],
     "modelo": ["modelo", "model"],
-    "año": ["año", "year", "anio", "ano"],
+    "año": ["año", "ao", "year", "anio", "ano"],
     "precio": ["precio", "price", "precio_usd", "precio lista"],
     "kilometraje": ["kilometraje", "km", "kilometros", "mileage"],
-    "transmision": ["transmision", "transmission", "trans"],
+    "transmision": ["transmision", "transmicion", "transmission", "trans"],
     "combustible": ["combustible", "fuel", "fuel_type"],
     "color": ["color", "color exterior"],
     "estado": ["estado", "condition", "condicion"],
     "id": ["id", "sku", "codigo"],
-    # Columnas del formato real (stock copy.csv)
+    # Columnas del formato real (stock copy.csv / stockfinal.csv)
     "sucursal": ["sucursal"],
-    "ubicacion": ["ubicación", "ubicacion"],
+    "ubicacion": ["ubicación", "ubicacion", "ubicacin"],
     "comuna": ["comuna"],
-    "version": ["versión", "version"],
+    "version": ["versión", "version", "versin"],
+    "segmento": ["segmento"],
     "placa_patente": ["placa patente", "placa_patente", "patente"],
     "link": ["link"],
 }

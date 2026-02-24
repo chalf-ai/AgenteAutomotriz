@@ -36,10 +36,18 @@ def search_stock(
     km_max: Optional[float] = None,
     marca: Optional[str] = None,
     modelo: Optional[str] = None,
+    segmento: Optional[str] = None,
+    transmision: Optional[str] = None,
+    combustible: Optional[str] = None,
     limit: int = 5,
     order_by_precio: str = "asc",
 ) -> str:
-    """Busca vehículos usados en el stock real. precio_min y precio_max en PESOS (ej. 20000000). order_by_precio: "asc" o "desc". Para presupuesto (hasta 20/30/40M) usa order_by_precio=desc. IMPORTANTE: Solo puedes mostrar al cliente vehículos y links que devuelva esta herramienta; NUNCA inventes productos ni URLs."""
+    """Busca vehículos usados en el stock real. precio_min y precio_max en PESOS (ej. 20000000). order_by_precio: "asc" o "desc". Para presupuesto (hasta 20/30/40M) usa order_by_precio=desc.
+    Filtros por tipo de vehículo (usar cuando el cliente pida):
+    - segmento: CityCar, Suv, Sedan, Furgon (ej. "quiero un SUV" -> segmento="Suv")
+    - transmision: Automatico (AT, DCT, automático) o Mecanico (MT, mecánico)
+    - combustible: Diesel, Gasolina, Hibrido, Electrico (ej. "diesel", "híbrido" -> combustible)
+    IMPORTANTE: Solo puedes mostrar al cliente vehículos y links que devuelva esta herramienta; NUNCA inventes productos ni URLs."""
     repo = _get_repo()
     results = repo.search(
         precio_min=precio_min,
@@ -49,6 +57,9 @@ def search_stock(
         km_max=km_max,
         marca=marca,
         modelo=modelo,
+        segmento=segmento,
+        transmision=transmision,
+        combustible=combustible,
         limit=limit,
         order_by_precio=order_by_precio or "asc",
     )
